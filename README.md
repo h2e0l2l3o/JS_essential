@@ -780,6 +780,12 @@ function User(first, last) {
 1. **일반(Normal) 함수**는 **호출위치**에 따라 this 정의
 2. **화살표(Arrow) 함수**는 **자신이 선언된 함수 범위**에서 this 정의
 
+- **화살표 함수는 예외적으로 this 바인딩이 존재하지 않음**. 내부의 this를 참조하면서 스코프체인을 통해 상위 스코프의 this를 그대로 참조함. 
+- 화살표 함수의 this는 정의된 위치에 따라 결정됨.
+- 중첩 함수의 경우, 스코프 체인 상에서 가장 가까운 상위 함수 중 화살표 함수가 아닌 함수의 this 참조. 만약 상위 함수가 없다면 최상위 스코프인 window 전역 개체 가리킴.
+
+- 일반 함수는 동적으로, 화살표 함수는 정적으로 this 객체 결정됨. 정적인 화살표 함수는 바인딩으로도 this 값 변경 불가.
+
 ```js
 //this
 
@@ -831,3 +837,151 @@ const jiwon = new User("jiwon");
 jiwon.normal(); //jiwon
 jiwon.arrow(); //undefined
 ```
+
+## 화살표 함수의 this
+- **화살표 함수의 `this`는 언제나 상위 스코프의 `this`를 의미.
+```js
+const timer = {
+  name: "jiwon",
+  timeout: function () {
+    setTimeout(function () {
+      console.log(this.name);
+    }, 2000);
+  },
+};
+
+timer.timeout(); //undefined
+// 왜 일반함수로 입력했는데 undefined 된 것일까?
+// 일반 함수는 호출 위치에 따라 this를 정의함.
+// 여기서는 setTimeout이라는 함수의 내부 로직으로 콜백이 들어가서 어디선가 실행됨.
+// 그래서 출력안됨.
+
+const timer2 = {
+  name: "this time",
+  timeout: function () {
+    setTimeout(() => {
+      console.log(this.name);
+    }, 2000);
+  },
+};
+
+timer2.timeout(); // this time
+```
+### 바인딩?
+- **바인딩**이란 식별자와 값을 연결하는 과정
+- **this**는 자신이 속한 객체 또나느 자신이 생성할 인스턴스를 가리키는 식별자.
+
+```js
+console.log(this); // 여기서의 this는 전역 객체인 window를 가리킴. 
+// Window
+
+const a = {
+  name: "jiwon",
+  getName() {
+    console.log(this);
+  }
+}
+
+a.getName(); // 여기서 this는 a를 가리킴.
+
+const b = a.getName; //b에다가 console.log(this)라는 내용의 함수인, getName() 자체를 할당.
+b(); // 그래서 맨 위의 console.log(this)와 같은 역할 수행
+// 즉, 전역객체인 Window 출력
+```
+ - 정리하자면, 콜백 함수가 객체 안에 쓰여진 건 맞지만, 콜백함수는 그 객체 안에서 항상 실행되는 것이 아님. 여기서도 setTimeout 의 콜백함수는 지정된 시간 뒤 어디선가 콜백함수가 실행됨. 이처럼 콜백 함수는 그 실행 맥락에 따라 `this`가 결정되기 떄문에, 객체 안에 있다고 항상 그 객체의 `this`를 가리키지 않음. 결과적으로 여기서 setTimeout 의 콜백함수가 일반함수로 쓰여졌으므로, 객체 안에서 실행되는 것이아니고, 객체 밖 어디선가 쓰여짐. 그러므로 여기서 `this`는 전역객체(window)를 가리키고 전역객체는 name이 없어서, `undefined` 결과값이 나옴.
+ - 반대로 화살표 함수의 `this`는 화살표 함수의 상위 객체의 `this`를 가리키는데, 여기서 화살표 함수의 상위 객체는 `timeout`이고, 이 `timeout`의 `this`는 이 메소드를 갖는 객체인 `timer2`이다. 즉, 그래서 `timer2.timeout()`을 실행하면 `timer2`의 이름이 출력됨.
+
+
+### 콜백함수?
+- 인수로 전달되는 함수. 특정 작업이 완료된 후 호출되는 함수. 보통 비동기 작업(이벤트 처리, 네트워크 요청 등)에서 작업이 끝나면 호출되어 후속 처리 수행.
+  - (ex) setTimeout(함수, 시간) 여기서의 함수.
+- 화살표 함수는 콜백 함수 내부와 외부의 this 문제를 해걀하기 위해 의도적으로 설계됨 함수.
+
+
+## 화살표 함수 vs 일반 함수
+
+1. this
+ - **일반함수**
+    - 자바스크립트에서 *모든 함수는 실행될 때마다 함수 내부에 this라는 객체가 추가*된다. 
+    - 일반함수에서 this가 바인딩 될때 여러가지 경우의 수를 보자면,
+      1) 함수 실행시에는 전역(window) 객체를 가리킴.
+      2) 만약 메소드를 실행한다면, 전역 객체가 아닌, 그 메소드를 소유하고 있는 객체를 가리킴.
+      3) 생성자 실행시에는 새롭게 만들어진 객체를 가리킴.
+      
+    - 이처럼 일반 함수는 함수를 선언할 때 this에 바인딩할 객체가 정적으로 결정되는 것이 아님. 상황에 따라 함수를 호출할 때 어떻게 호출되었는지에 기반하여 this에 바인딩할 객체가 동적으로 결정됨.
+
+  - **화살표 함수**
+    - 화살표 함수는 *함수를 선언할 때 this에 바인딩할 객체가 정적으로 결정*된다.
+    - 화살표 함수의 this 언제나 상위 스코프의 this를 가리킨다.(Lexical this)
+    - call, apply, bind 메소드를 사용하여 this를 변경할 수 없다.
+
+    - 예시:
+
+    ```js
+      function fun() {
+        this.name = "hey";
+        return {
+          name: "day",
+          speak: function () {
+            console.log(this.name);
+          },
+        };
+      }
+
+      function arrFun() {
+        this.name = "hey";
+        return {
+          name: "day",
+          speak: () => {
+            console.log(this.name);
+          },
+        };
+      }
+
+      const fun1 = new fun();
+      fun1.speak(); // hey
+
+      const fun2 = new arrFun();
+      fun2.speak(); // day
+
+    ```
+    - 일반함수의 경우, 여기서는 메소드가 실행되었음으로 메소드를 가지고 있는 객체인 fun()을 this로 생각함. 그래서 fun()의 name인 'hey'가 출력됨.
+    - 반면, 화살표함수의 경우, 상위 스코프의 this를 가리키는데, 상위스코프는 return 스코프임으로, return 스코프 내에 있는 name인 'day'가 출력됨.    
+
+
+2. 생성자 함수로 사용 가능 여부
+  - 일반 함수는 생성자 함수로 사용할 수 있다.
+  - 화살표 함수는 생성자 함수로 사용할 수 없다. prototype 프로퍼티를 가지고 있지 않기 때문이다.
+
+    ```js
+      function fun() {
+        this.num = 1234;
+      }
+      const arrFun = () => {
+        this.num = 1234;
+      };
+
+      const funA = new fun();
+      console.log(funA.num); // 1234
+
+      const funB = new arrFun(); // Error
+
+    ```
+3. arguments 사용 가능 여부
+  - 일반 함수 에서는 함수가 실행 될때 암묵적으로 arguments 변수가 전달되어 사용할 수 있다.
+  - 화살표 함수에서는 arguments 변수가 전달되지 않는다.
+    ```js
+    function fun() {
+      console.log(arguments); // Arguments(3) [1, 2, 3, callee: ƒ, Symbol(Symbol.iterator): ƒ]
+    }
+
+    fun(1, 2, 3);
+    일반함수는 arguments변수가 전달되어 [1,2,3]이 찍히지만
+
+    const arrFun = () => {
+      console.log(arguments); // Uncaught ReferenceError: arguments is not defined
+    };
+
+    fun(1, 2, 3);
+    ```
+
